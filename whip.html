@@ -1,0 +1,149 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>WebRTC WHIP Example</title>  
+    <style>  
+        /* 为video添加边框和边距 */  
+        #localVideo {  
+            width: 100%;  /* 使视频宽度自适应容器 */  
+            max-width: 1080px; /* 设置最大宽度 */  
+            height: auto; /* 保持视频比例 */  
+            border: 5px solid #007BFF; /* 蓝色边框 */  
+            border-radius: 10px; /* 边框圆角 */  
+            margin: 20px auto; /* 上下边距20px，左右自动居中 */  
+            display: block; /* 使margin自动居中有效 */  
+        }  
+  
+        /* 为按钮添加样式 */  
+        #startButton {  
+            background-color: #007BFF; /* 蓝色背景 */  
+            color: white; /* 白色文字 */  
+            padding: 10px 20px; /* 内边距 */  
+            border: none; /* 无边框 */  
+            border-radius: 5px; /* 圆角 */  
+            cursor: pointer; /* 鼠标悬停时显示手形图标 */  
+            font-size: 16px; /* 字体大小 */  
+            transition: background-color 0.3s; /* 背景色过渡效果 */  
+            margin-top: 20px; /* 上边距 */  
+            display: block; /* 使按钮居中 */  
+            width: max-content; /* 根据内容调整宽度 */  
+            margin-left: auto;  
+            margin-right: auto;  
+        }  
+  
+        #startButton:hover {  
+            background-color: #0056b3; /* 鼠标悬停时改变背景色 */  
+        }  
+    </style>  
+</head>  
+<body>
+    推流地址：<input id="playUrl" style="width: 500px;" value="https://11.11.4.138:8043/index/api/whep?app=live&stream=1100_1122"/>
+    <video id="localVideo" autoplay playsinline controls muted></video>
+    <button id="startButton">开始直播</button>
+    <select id="videoDeviceSelect">
+        <option value="">请选择视频设备</option>
+    </select>
+    <select id="audioDeviceSelect">
+        <option value="">请选择音频设备</option>
+    </select>
+    <script src="axios.min.js"></script>
+    <script type="text/javascript" src="jquery-1.12.2.min.js"></script>
+    <script>
+        const localVideo = document.getElementById('localVideo');
+        const startButton = document.getElementById('startButton');
+        const videoDeviceSelect = document.getElementById('videoDeviceSelect');
+        const audioDeviceSelect = document.getElementById('audioDeviceSelect');
+
+        navigator.mediaDevices.enumerateDevices().then(function(devices) {
+            devices.forEach(function(device) {
+                let option = document.createElement('option');
+                option.value = device.deviceId;
+                option.text = device.label || `设备 ${device.deviceId}`;
+                if (device.kind === 'videoinput') {
+                    videoDeviceSelect.appendChild(option);
+                } else if (device.kind === 'audioinput') {
+                    audioDeviceSelect.appendChild(option);
+                }
+            });
+        }).catch(function(err) {
+            console.log(err.name + ": " + err.message);
+        });
+
+        let localStream;
+        let peerConnection;
+
+        var randomInt1 = Math.floor(Math.random() * 1000);
+        var randomInt2 = Math.floor(Math.random() * 1000);
+        var url = 'https://11.11.4.138:8043/index/api/whip?app=live&stream=' + randomInt1 + '_' + randomInt2;
+        $("#playUrl").val(url);
+
+        async function startStreaming() {
+            try {
+                const videoDeviceId = videoDeviceSelect.value;
+                const audioDeviceId = audioDeviceSelect.value;
+
+                const constraints = {
+                    video: {
+                        frameRate: 30,
+                        deviceId: { exact: videoDeviceId }
+                    },
+                    audio: {
+                        deviceId: { exact: audioDeviceId }
+                    }
+                };
+
+                const localStream = await navigator.mediaDevices.getUserMedia(constraints);
+				
+				//const localStream = await navigator.mediaDevices.getDisplayMedia({
+				// video: true,
+				// audio: true
+			   //});
+				
+                localVideo.srcObject = localStream;
+
+                peerConnection = new RTCPeerConnection();
+
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                peerConnection.createOffer().then(desc => {
+				console.log('offer:', desc.sdp);
+				peerConnection.setLocalDescription(desc).then(() => {
+				  axios({
+					method: 'post',
+					url: url,
+					responseType: 'json',
+					data: desc.sdp,
+					headers: {
+					  'Content-Type': 'text/plain;charset=utf-8'
+					}
+				  }).then(response => {
+					let ret = response.data;
+					let anwser = {};
+					anwser.sdp = ret;
+					anwser.type = 'answer';
+					console.log('answer:', ret);
+					peerConnection.setRemoteDescription(anwser).then(() => {
+					  console.log('set remote sucess');
+					}).catch(e => {
+					  console.error('Error in startStreaming:', e);  
+					});
+				  });
+				});
+			  }).catch(e => {
+				console.error('Error in startStreaming:', e);
+			  });
+
+            } catch (error) {
+                console.error('Error in startStreaming:', error);
+            }
+        }
+
+        startButton.addEventListener('click', startStreaming);
+    </script>
+</body>
+
+</html>

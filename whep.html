@@ -1,0 +1,75 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>WebRTC WHEP Example</title>  
+    <style>  
+        /* 为video添加边框和边距 */  
+        #localVideo {  
+            width: 100%;  /* 使视频宽度自适应容器 */  
+            max-width: 1080px; /* 设置最大宽度 */  
+            height: auto; /* 保持视频比例 */  
+            border: 5px solid #007BFF; /* 蓝色边框 */  
+            border-radius: 10px; /* 边框圆角 */  
+            margin: 20px auto; /* 上下边距20px，左右自动居中 */  
+            display: block; /* 使margin自动居中有效 */  
+        }  
+  
+        /* 为按钮添加样式 */  
+        #startButton {  
+            background-color: #007BFF; /* 蓝色背景 */  
+            color: white; /* 白色文字 */  
+            padding: 10px 20px; /* 内边距 */  
+            border: none; /* 无边框 */  
+            border-radius: 5px; /* 圆角 */  
+            cursor: pointer; /* 鼠标悬停时显示手形图标 */  
+            font-size: 16px; /* 字体大小 */  
+            transition: background-color 0.3s; /* 背景色过渡效果 */  
+            margin-top: 20px; /* 上边距 */  
+            display: block; /* 使按钮居中 */  
+            width: max-content; /* 根据内容调整宽度 */  
+            margin-left: auto;  
+            margin-right: auto;  
+        }  
+  
+        #startButton:hover {  
+            background-color: #0056b3; /* 鼠标悬停时改变背景色 */  
+        }  
+    </style>  
+</head>  
+<body>  
+    拉流地址：<input id="playUrl" style="width: 500px;" value="https://11.11.2.119:8043/index/api/whep?app=live&stream=1100_1122"/>
+    <video id="localVideo" autoplay playsinline controls></video>  
+    <button id="startButton">开始播放</button>  
+    <script src="axios.min.js"></script>  
+	<script src="srs.sdk.js"></script>
+<script type="text/javascript" src="jquery-1.12.2.min.js"></script>	
+    <script>
+	//https://11.11.4.138:8043/index/api/whep?app=live&stream=1100_1122
+		const startButton = document.getElementById('startButton');
+	    var sdk = null; // Global handler to do cleanup when republishing.
+		var startPlay = function() {
+			
+
+			// Close PC when user replay.
+			if (sdk) {
+				sdk.close();
+			}
+			sdk = new SrsRtcWhipWhepAsync();
+
+			// User should set the stream when publish is done, @see https://webrtc.org/getting-started/media-devices
+			// However SRS SDK provides a consist API like https://webrtc.org/getting-started/remote-streams
+			$('#localVideo').prop('srcObject', sdk.stream);
+			// Optional callback, SDK will add track to stream.
+			// sdk.ontrack = function (event) { console.log('Got track', event); sdk.stream.addTrack(event.track); };
+
+			// For example: webrtc://r.ossrs.net/live/livestream
+			var url = $("#playUrl").val();
+			sdk.playZlm(url)
+		};
+		// Event listener for the start button
+	startButton.addEventListener('click', startPlay);
+	</script>  
+</body>  
+</html>
